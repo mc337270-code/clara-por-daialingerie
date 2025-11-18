@@ -3,29 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cadastro de Produtos — Funcional</title>
-
-<!-- ZXing -->
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<title>Sistema de Produtos</title>
 
 <style>
-    body { font-family: Arial; background:#fce4ec; padding:20px; }
-    .box { max-width:900px; margin:auto; background:white; padding:20px; border-radius:12px; }
-    input, button { width:100%; padding:10px; margin:8px 0 14px; border-radius:8px; border:1px solid #bbb; font-size:16px; }
-    button { background:#ad1457; color:white; cursor:pointer; font-weight:bold; }
+    body { background:#fce4ec; font-family: Arial; padding:20px; }
+    .box { background:white; max-width:900px; margin:auto; padding:20px; border-radius:12px; }
+    input, button { width:100%; padding:10px; margin:8px 0; border-radius:8px; border:1px solid #bbb; }
+    button { background:#ad1457; color:white; font-weight:bold; cursor:pointer; }
     button:hover { background:#8e0c45; }
-    #video { width:180px; border:3px solid #ad1457; border-radius:10px; margin-top:10px; }
-    .result-card { padding:12px; border:1px solid #ddd; border-radius:10px; margin-top:10px; background:#fff0f6; }
-    .result-card button { width:160px; }
+    .result-card {
+        background:#fff0f6; border:1px solid #ddd; padding:12px; margin-top:10px; border-radius:10px;
+    }
+    .two-buttons {
+        display:flex; gap:10px; margin-top:10px;
+    }
+    .two-buttons button {
+        width:50%;
+    }
 </style>
 </head>
 <body>
 
 <div class="box">
-
 <h1 style="text-align:center;color:#880e4f;">Cadastro de Produtos</h1>
 
-<h2>Cadastrar / Editar Produto</h2>
+<h2>Cadastrar / Editar</h2>
 
 <label>Nome</label>
 <input id="nome">
@@ -39,75 +41,63 @@
 <label>Preço</label>
 <input id="preco" type="number" step="0.01">
 
-<button onclick="salvarProduto()">Salvar Produto</button>
-
+<button onclick="salvar()">Salvar Produto</button>
 
 <hr>
 
 <h2>Buscar Produto</h2>
-<input id="busca" onkeyup="buscarProduto()" placeholder="Nome ou código...">
+<input id="busca" onkeyup="buscar()" placeholder="Digite nome ou código...">
 
-<div style="text-align:center;">
-    <video id="video" autoplay muted></video><br>
-    <button onclick="startZXing()">Ativar Scanner</button>
-</div>
-
-<h3>Resultados</h3>
 <div id="resultado"></div>
-
 </div>
 
 <script>
-/* Banco de produtos */
-let lista = JSON.parse(localStorage.getItem("produtos_v2") || "[]");
+/* banco de dados */
+let produtos = JSON.parse(localStorage.getItem("produtos_bd") || "[]");
 
-/* Inputs */
-const inputNome = document.getElementById("nome");
-const inputTam = document.getElementById("tamanho");
-const inputCod = document.getElementById("codigo");
-const inputPreco = document.getElementById("preco");
-const inputBusca = document.getElementById("busca");
+/* inputs */
+const nome = document.getElementById("nome");
+const tamanho = document.getElementById("tamanho");
+const codigo = document.getElementById("codigo");
+const preco = document.getElementById("preco");
+const busca = document.getElementById("busca");
 
-/* Vídeo */
-let video = document.getElementById("video");
-
-/* Scanner */
-let codeReader = new ZXing.BrowserMultiFormatReader();
-let scanning = false;
-
-/* Salvar Produto */
-function salvarProduto(){
-    let nome = inputNome.value.trim();
-    let tamanho = inputTam.value.trim();
-    let codigo = inputCod.value.trim();
-    let preco = inputPreco.value.trim();
-
-    if(!nome || !codigo){
+/* Salvar ou editar produto */
+function salvar(){
+    if(!nome.value.trim() || !codigo.value.trim()){
         alert("Nome e código são obrigatórios.");
         return;
     }
 
-    let existente = lista.find(p => p.codigo === codigo);
+    let existente = produtos.find(p => p.codigo === codigo.value.trim());
 
     if(existente){
-        existente.nome = nome;
-        existente.tamanho = tamanho;
-        existente.preco = preco;
+        // Editando
+        existente.nome = nome.value.trim();
+        existente.tamanho = tamanho.value.trim();
+        existente.preco = preco.value.trim();
     } else {
-        lista.push({nome, tamanho, codigo, preco});
+        // Novo produto
+        produtos.push({
+            nome: nome.value.trim(),
+            tamanho: tamanho.value.trim(),
+            codigo: codigo.value.trim(),
+            preco: preco.value.trim()
+        });
     }
 
-    localStorage.setItem("produtos_v2", JSON.stringify(lista));
-    alert("Produto salvo com sucesso!");
+    localStorage.setItem("produtos_bd", JSON.stringify(produtos));
+    alert("Produto salvo!");
 
-    buscarProduto();
+    limparCampos();
+    buscar();
 }
 
-/* Buscar */
-function buscarProduto(){
-    let termo = inputBusca.value.toLowerCase();
+/* Buscar produtos */
+function buscar(){
+    let termo = busca.value.toLowerCase();
 
-    let filtrados = lista.filter(p =>
+    let filtrados = produtos.filter(p =>
         p.nome.toLowerCase().includes(termo) ||
         p.codigo.includes(termo)
     );
@@ -115,70 +105,62 @@ function buscarProduto(){
     render(filtrados);
 }
 
+/* Carregar para edição */
+function carregar(cod){
+    let p = produtos.find(x => x.codigo === cod);
+    if(!p) return;
+
+    nome.value = p.nome;
+    tamanho.value = p.tamanho;
+    codigo.value = p.codigo;
+    preco.value = p.preco;
+}
+
+/* Excluir produto */
+function excluir(cod){
+    if(!confirm("Deseja mesmo excluir este produto?")) return;
+
+    produtos = produtos.filter(p => p.codigo !== cod);
+    localStorage.setItem("produtos_bd", JSON.stringify(produtos));
+    buscar();
+}
+
 /* Mostrar resultados */
-function render(arr){
+function render(lista){
     const div = document.getElementById("resultado");
     div.innerHTML = "";
 
-    if(arr.length === 0){
-        div.innerHTML = "Nenhum produto encontrado.";
+    if(lista.length === 0){
+        div.innerHTML = "<p>Nenhum produto encontrado.</p>";
         return;
     }
 
-    arr.forEach(p=>{
+    lista.forEach(p=>{
         div.innerHTML += `
             <div class="result-card">
                 <strong>${p.nome}</strong><br>
                 Tamanho: ${p.tamanho}<br>
                 Código: ${p.codigo}<br>
-                Preço: R$ ${p.preco}<br><br>
-                <button onclick="carregar('${p.codigo}')">Carregar</button>
+                Preço: R$ ${p.preco}
+                
+                <div class="two-buttons">
+                    <button onclick="carregar('${p.codigo}')">Editar</button>
+                    <button onclick="excluir('${p.codigo}')">Excluir</button>
+                </div>
             </div>
         `;
     });
 }
 
-function carregar(codigo){
-    let p = lista.find(x=>x.codigo === codigo);
-    if(!p) return;
-
-    inputNome.value = p.nome;
-    inputTam.value = p.tamanho;
-    inputCod.value = p.codigo;
-    inputPreco.value = p.preco;
+/* Limpar formulário */
+function limparCampos(){
+    nome.value = "";
+    tamanho.value = "";
+    codigo.value = "";
+    preco.value = "";
 }
 
-/* Scanner ZXing — corrigido e eficiente */
-async function startZXing(){
-    if(scanning) return;
-    scanning = true;
-
-    try{
-        const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-        if(devices.length === 0){
-            alert("Nenhuma câmera encontrada.");
-            return;
-        }
-
-        const camId = devices[0].deviceId;
-
-        await codeReader.decodeFromVideoDevice(camId, 'video', (result, err) => {
-            if(result){
-                let code = result.text;
-                inputBusca.value = code;
-                buscarProduto();
-
-                codeReader.reset(); // PARA DE LER!
-                scanning = false;
-            }
-        });
-
-    } catch(e){
-        alert("Erro ao iniciar o scanner.");
-        scanning = false;
-    }
-}
-
+buscar();
 </script>
 
 </body>
